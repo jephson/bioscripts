@@ -34,6 +34,8 @@ def filter_file(in_filename, out_filename):
                 max_mass = mass_range_size                
                 records_done += 1
                 print_to_start("{0} records filtered".format(records_done))
+            elif line == '':
+                pass
             else:
                 parts = line.split(' ')
                 assert len(parts) == 2
