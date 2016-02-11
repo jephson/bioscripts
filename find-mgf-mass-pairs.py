@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 # TODO pass these on the command line?
-MASS_DIFFERENCE = 12.084
+MASS_DIFFERENCE = 12.07573
 EPSILON = 0.001
 MAX_TIME_DIFFERENCE = 30
 
 import sys
+from operator import methodcaller
 
 # Library-ish functions and classes first
 
@@ -19,6 +20,7 @@ class Ions:
     def __init__(self, metadata, intensities):
         self.metadata = metadata
         self.intensities = intensities
+
     def write(self, f):
         f.write('BEGIN IONS\n')
         for key in self.metadata:
@@ -26,6 +28,22 @@ class Ions:
         for mass, intensity in self.intensities:
             f.write("{0} {1}\n".format(mass, intensity))
         f.write('END IONS\n')
+
+    def pepmass(self):
+        # Some programs write 2 numbers to the PEPMASS line, the second being
+        # intensity. Let's ignore that for now.
+        return float(self.metadata['PEPMASS'].split(' ')[0])
+
+    def rtinseconds(self):
+        return float(self.metadata['RTINSECONDS'])
+
+    def charge(self):
+        chg = self.metadata['CHARGE']
+        sign = chg[-1:]
+        assert sign == '+' or sign == '-'
+        chg = chg[:-1]
+        return int(sign + chg) 
+
 
 # Generator that takes a file and generates Ions
 def read_ions(in_f):
@@ -59,24 +77,23 @@ def find_similar_mass(in_filename, out_filename):
         for ions in read_ions(in_f):
             records.append(ions)
             print_to_start("{0} records read".format(len(records)))
-    records.sort(key=pepmass)
+    records.sort(key=methodcaller('pepmass'))
     found = 0
     with open(out_filename, 'w') as out_f:
         for i in range(0, len(records) - 1):
             left = records[i]
-            right = find_by_pepmass(pepmass(left) + MASS_DIFFERENCE, records[i + 1:])
+            right_target_mass = left.pepmass() + MASS_DIFFERENCE / left.charge()
+            filtered = [right for right in records[i + 1:] if charge_time_match(left, right)]
+            right = find_by_pepmass(right_target_mass, filtered)
             if right is not None:
-                if abs(rtinseconds(left) - rtinseconds(right)) < MAX_TIME_DIFFERENCE:
-                    found += 1
-                    print_to_start("{0} pairs written".format(found))
-                    left.write(out_f)
-                    right.write(out_f)
+                found += 1
+                print_to_start("{0} pairs written".format(found))
+                left.write(out_f)
+                right.write(out_f)
 
-def pepmass(ions):
-    return float(ions.metadata['PEPMASS'])
-
-def rtinseconds(ions):
-    return float(ions.metadata['RTINSECONDS'])
+def charge_time_match(left, right):
+    return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
+        and left.charge() == right.charge()
 
 # Binary search a sorted list of records to find one with a similar PEPMASS
 def find_by_pepmass(target_mass, records):
@@ -85,7 +102,7 @@ def find_by_pepmass(target_mass, records):
         if first > last:
             return None
         else:
-            mid_mass = pepmass(records[mid])
+            mid_mass = records[mid].pepmass()
             if abs(mid_mass - target_mass) < EPSILON:
                 return records[mid]
             elif mid_mass < target_mass:
