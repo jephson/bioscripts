@@ -98,7 +98,7 @@ def charge_time_match(left, right):
 # Binary search a sorted list of records to find one with a similar PEPMASS
 def find_by_pepmass(target_mass, records):
     def recurse(first, last):
-        mid = (first + last) / 2 
+        mid = (first + last) // 2
         if first > last:
             return None
         else:
