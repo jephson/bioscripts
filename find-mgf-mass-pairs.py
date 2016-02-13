@@ -84,10 +84,9 @@ def find_similar_mass(in_filename, out_filename):
         for i in range(0, len(records) - 1):
             left = records[i]
             right_target_mass = left.pepmass() + MASS_DIFFERENCE / left.charge()
-            # TODO this is O(n^2)!
-            filtered = [right for right in records[i + 1:] if charge_time_match(left, right)]
-            right = find_by_pepmass(right_target_mass, filtered)
-            if right is not None:
+            right_candidates = find_range_by_pepmass(right_target_mass, records[i + 1:])
+            filtered = [right for right in right_candidates if charge_time_match(left, right)]
+            for right in filtered:
                 found += 1
                 left.write(out_f)
                 right.write(out_f)
@@ -98,21 +97,26 @@ def charge_time_match(left, right):
     return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
         and left.charge() == right.charge()
 
-# Binary search a sorted list of records to find one with a similar PEPMASS
-def find_by_pepmass(target_mass, records):
-    def recurse(first, last):
-        mid = (first + last) // 2
-        if first > last:
-            return None
-        else:
-            mid_mass = records[mid].pepmass()
-            if abs(mid_mass - target_mass) < EPSILON:
-                return records[mid]
-            elif mid_mass < target_mass:
-                return recurse(mid + 1, last)
-            else: # mid_mass > target_mass
-                return recurse(first, mid - 1)
-    return recurse(0, len(records) - 1)
+# Binary search a sorted list of records to find ones with a similar PEPMASS
+def find_range_by_pepmass(target_mass_centre, records):
+    def mass(i):
+        return records[i].pepmass()
+
+    def recurse(left, right, target_mass):
+        assert left <= right
+        if left == right:
+            return left
+        if left + 1 == right and mass(left) < target_mass:
+            return right
+        mid = (left + right) // 2
+        if mass(mid) < target_mass:
+            return recurse(mid, right, target_mass)
+        else: # mass(mid) > target_mass
+            return recurse(left, mid, target_mass)
+
+    left  = recurse(0, len(records) - 1, target_mass_centre - EPSILON)
+    right = recurse(0, len(records) - 1, target_mass_centre + EPSILON)
+    return records[left:right]
 
 if __name__ == '__main__':
     if len(sys.argv) == 3:
