@@ -16,7 +16,7 @@ def print_to_start(string):
     sys.stdout.write('\r\033[K' + string)
     sys.stdout.flush()
 
-class MS2spectra:
+class MS2spectrum:
     def __init__(self, metadata, masses):
         self.metadata = metadata
         self.masses = masses
@@ -45,8 +45,8 @@ class MS2spectra:
         return int(sign + chg) 
 
 
-# Generator that takes a file and generates MS2spectra
-def read_spectrum(in_f):
+# Generator that takes a file and generates instances of MS2spectrum
+def read_spectra(in_f):
     masses = []
     metadata = {}
     for line in in_f:
@@ -54,7 +54,7 @@ def read_spectrum(in_f):
         if line == '' or line == 'BEGIN IONS':
             pass
         elif line == 'END IONS':
-            spectrum = MS2spectra(metadata, masses)
+            spectrum = MS2spectrum(metadata, masses)
             metadata = {}
             masses = []
             yield spectrum
@@ -74,7 +74,7 @@ def find_similar_mass(in_filename, out_filename):
     print("Reading {0}... ".format(in_filename))
     records = []
     with open(in_filename) as in_f:
-        for spectrum in read_spectrum(in_f):
+        for spectrum in read_spectra(in_f):
             records.append(spectrum)
             print_to_start("{0} records read".format(len(records)))
     records.sort(key=methodcaller('pepmass'))
@@ -83,13 +83,15 @@ def find_similar_mass(in_filename, out_filename):
         for i in range(0, len(records) - 1):
             left = records[i]
             right_target_mass = left.pepmass() + MASS_DIFFERENCE / left.charge()
+            # TODO this is O(n^2)!
             filtered = [right for right in records[i + 1:] if charge_time_match(left, right)]
             right = find_by_pepmass(right_target_mass, filtered)
             if right is not None:
                 found += 1
-                print_to_start("{0} pairs written".format(found))
                 left.write(out_f)
                 right.write(out_f)
+            print_to_start("{0} spectra compared, {1} pairs written".format(i, found))
+        print("\n")
 
 def charge_time_match(left, right):
     return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
@@ -110,7 +112,7 @@ def find_by_pepmass(target_mass, records):
             else: # mid_mass > target_mass
                 return recurse(first, mid - 1)
     return recurse(0, len(records) - 1)
-                
+
 if __name__ == '__main__':
     if len(sys.argv) == 3:
         find_similar_mass(sys.argv[1], sys.argv[2])
