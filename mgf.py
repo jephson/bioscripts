@@ -1,6 +1,6 @@
-#Based on a mascot generic file format tested with output
-#from MSConvert, Proteome Discoverer and Progenesis
-#these three programes define the metadata a bit differently
+# Based on a mascot generic file format tested with output
+# from MSConvert, Proteome Discoverer and Progenesis
+# these three programes define the metadata a bit differently
 
 class MS2spectrum:
     def __init__(self, metadata, masses):
@@ -32,8 +32,8 @@ class MS2spectrum:
 
 
 # Generator that takes a file and generates instances of MS2spectrum
-#This generator will have trouble with some input files have have more than
-#one = in the TITLE line
+# This generator will have trouble with some input files have have more than
+# one = in the TITLE line
 
 def read_spectra(in_f):
     masses = []
