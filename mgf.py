@@ -20,6 +20,9 @@ class MS2spectrum:
     def pepmass(self):
         # Some programs write 2 numbers to the PEPMASS line, the second being
         # intensity. Let's ignore that for now.
+        # IF the mgf files was from Proteome discoverer or MSC
+        # then this second value is precursor intensity
+        # so get second value if present or catch exception
         return float(self.metadata['PEPMASS'].split(' ')[0])
 
     def rtinseconds(self):
@@ -34,9 +37,21 @@ class MS2spectrum:
 
     def title(self):
         # this line vaires a lot and can contain intensity information too
-        # ignoring that for now, clean up on use in function
+        # so test which three common types it is and format accordingly
+        # from progenesis the second value is precursor intensity
         return self.metadata['TITLE']
 
+    def intensity(self):
+        #this is the place to bring together various precursor intensities
+        pass
+
+    def scan(self):
+        #the scan number ends up in various places too.
+        pass
+
+    def madeby(self):
+        # to recognise which of the three culprits made an mgf file
+        pass
 
 # Generator that takes a file and generates instances of MS2spectrum
 # Some input files have have more than one = in the TITLE line
