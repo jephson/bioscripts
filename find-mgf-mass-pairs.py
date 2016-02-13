@@ -77,6 +77,7 @@ def find_similar_mass(in_filename, out_filename):
         for spectrum in read_spectra(in_f):
             records.append(spectrum)
             print_to_start("{0} records read".format(len(records)))
+    print('')
     records.sort(key=methodcaller('pepmass'))
     found = 0
     with open(out_filename, 'w') as out_f:
@@ -90,8 +91,8 @@ def find_similar_mass(in_filename, out_filename):
                 found += 1
                 left.write(out_f)
                 right.write(out_f)
-            print_to_start("{0} spectra compared, {1} pairs written".format(i, found))
-        print("\n")
+            print_to_start("{0} spectra compared, {1} pairs written".format(i + 1, found))
+        print('')
 
 def charge_time_match(left, right):
     return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
