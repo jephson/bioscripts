@@ -32,6 +32,9 @@ class MS2spectrum:
 
 
 # Generator that takes a file and generates instances of MS2spectrum
+#This generator will have trouble with some input files have have more than
+#one = in the TITLE line
+
 def read_spectra(in_f):
     masses = []
     metadata = {}
