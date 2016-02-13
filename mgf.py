@@ -51,7 +51,16 @@ class MS2spectrum:
 
     def madeby(self):
         # to recognise which of the three culprits made an mgf file
-        pass
+        test = self.metadata['TITLE']
+        if test.find('intensity') > 0:
+            return 'Progenesis'
+        elif test.find('NativeID') > 0:
+            return 'MSConvert'
+        elif test.find('Spectrum') >0 :
+            return 'Proteome Discoverer'
+        else:
+            return 'Some other program wrote the mgf file'
+
 
 # Generator that takes a file and generates instances of MS2spectrum
 # Some input files have have more than one = in the TITLE line
