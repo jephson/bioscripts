@@ -89,8 +89,9 @@ def read_spectra(in_f):
 
 # To identify which program made an mgf file
 # and count spectra of each type within file
+# the count is slightly wrong here as it's continuous
 
-def mgf_madeby(in_f)
+def mgf_madeby(in_f):
     types = {}
     count = 0
     for spectra in read_spectra(in_f):
