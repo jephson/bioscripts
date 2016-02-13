@@ -10,7 +10,8 @@ from mgf import MS2spectrum, read_spectra
 scan = sys.argv[1]
 input_file = 'mini.mgf'
 output_file = 'out.mgf'
-
+not_found = 0
+found = 0
 
 with open(input_file, 'r') as in_f, open(output_file, 'w') as out_f:
     for spectra in read_spectra(in_f):
@@ -18,7 +19,11 @@ with open(input_file, 'r') as in_f, open(output_file, 'w') as out_f:
 #       spectra.charge()))
         title = spectra.title()
         if title.find(scan) > 0:
+            found +=1
             print(spectra.write(out_f))
+        else:
+            not_found += 1
+print('scan {0} found in {1} not found in {2}'.format(scan, found, not_found))
 
 
 
