@@ -1,4 +1,4 @@
-#Based on a mascot generic file format tested with otuput
+#Based on a mascot generic file format tested with output
 #from MSConvert, Proteome Discoverer and Progenesis
 #these three programes define the metadata a bit differently
 
