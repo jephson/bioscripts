@@ -87,3 +87,16 @@ def read_spectra(in_f):
             elif len(parts) == 2:
                 metadata[parts[0]] = parts[1]
 
+# To identify which program made an mgf file
+# and count spectra of each type within file
+
+def mgf_madeby(in_f)
+    types = {}
+    count = 0
+    for spectra in read_spectra(in_f):
+        count += 1
+        types[spectra.madeby()] = count
+    result = ''
+    for a in types:
+        result += "{0} {1}\n".format(a, types[a])
+    return result
