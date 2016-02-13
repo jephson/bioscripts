@@ -7,8 +7,7 @@ MAX_TIME_DIFFERENCE = 30
 
 import sys
 from operator import methodcaller
-
-# Library-ish functions and classes first
+from mgf import MS2spectrum, read_spectra
 
 # Magic function to erase the previous line we printed and overwrite
 # it, for a nicer progress display
@@ -16,58 +15,7 @@ def print_to_start(string):
     sys.stdout.write('\r\033[K' + string)
     sys.stdout.flush()
 
-class MS2spectrum:
-    def __init__(self, metadata, masses):
-        self.metadata = metadata
-        self.masses = masses
-
-    def write(self, f):
-        f.write('BEGIN IONS\n')
-        for key in self.metadata:
-            f.write('{0}={1}\n'.format(key, self.metadata[key]))
-        for mass, intensity in self.masses:
-            f.write("{0} {1}\n".format(mass, intensity))
-        f.write('END IONS\n')
-
-    def pepmass(self):
-        # Some programs write 2 numbers to the PEPMASS line, the second being
-        # intensity. Let's ignore that for now.
-        return float(self.metadata['PEPMASS'].split(' ')[0])
-
-    def rtinseconds(self):
-        return float(self.metadata['RTINSECONDS'])
-
-    def charge(self):
-        chg = self.metadata['CHARGE']
-        sign = chg[-1:]
-        assert sign == '+' or sign == '-'
-        chg = chg[:-1]
-        return int(sign + chg) 
-
-
-# Generator that takes a file and generates instances of MS2spectrum
-def read_spectra(in_f):
-    masses = []
-    metadata = {}
-    for line in in_f:
-        line = line.strip()
-        if line == '' or line == 'BEGIN IONS':
-            pass
-        elif line == 'END IONS':
-            spectrum = MS2spectrum(metadata, masses)
-            metadata = {}
-            masses = []
-            yield spectrum
-        else:
-            parts = line.split('=', 1)
-            if len(parts) == 1:
-                parts = line.split(' ')
-                assert len(parts) == 2
-                masses.append(parts)
-            elif len(parts) == 2:
-                metadata[parts[0]] = parts[1]
-
-# Then the function that solves our actual problem.
+# The function that solves our actual problem.
 # Read all the records from input, sort by PEPMASS, then for each element
 # look for one with an exactly different mass 
 def find_similar_mass(in_filename, out_filename):
