@@ -1,3 +1,5 @@
+import sys
+
 # Based on a mascot generic file format tested with output
 # from MSConvert, Proteome Discoverer and Progenesis
 # these three programes define the metadata a bit differently
@@ -7,7 +9,7 @@ class MS2spectrum:
         self.metadata = metadata
         self.masses = masses
 
-    def write(self, f):
+    def write(self, f = sys.stdout):
         f.write('BEGIN IONS\n')
         for key in self.metadata:
             f.write('{0}={1}\n'.format(key, self.metadata[key]))
@@ -30,10 +32,15 @@ class MS2spectrum:
         chg = chg[:-1]
         return int(sign + chg)
 
+    def title(self):
+        # this line vaires a lot and can contain intensity information too
+        # ignoring that for now, clean up on use in function
+        return self.metadata['TITLE']
+
 
 # Generator that takes a file and generates instances of MS2spectrum
-# This generator will have trouble with some input files have have more than
-# one = in the TITLE line
+# Some input files have have more than one = in the TITLE line
+# so metadata is split into two parts only
 
 def read_spectra(in_f):
     masses = []
