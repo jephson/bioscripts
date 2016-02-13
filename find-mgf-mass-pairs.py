@@ -16,16 +16,16 @@ def print_to_start(string):
     sys.stdout.write('\r\033[K' + string)
     sys.stdout.flush()
 
-class Ions:
-    def __init__(self, metadata, intensities):
+class MS2spectra:
+    def __init__(self, metadata, masses):
         self.metadata = metadata
-        self.intensities = intensities
+        self.masses = masses
 
     def write(self, f):
         f.write('BEGIN IONS\n')
         for key in self.metadata:
             f.write('{0}={1}\n'.format(key, self.metadata[key]))
-        for mass, intensity in self.intensities:
+        for mass, intensity in self.masses:
             f.write("{0} {1}\n".format(mass, intensity))
         f.write('END IONS\n')
 
@@ -45,25 +45,25 @@ class Ions:
         return int(sign + chg) 
 
 
-# Generator that takes a file and generates Ions
-def read_ions(in_f):
-    intensities = []
+# Generator that takes a file and generates MS2spectra
+def read_spectrum(in_f):
+    masses = []
     metadata = {}
     for line in in_f:
         line = line.strip()
         if line == '' or line == 'BEGIN IONS':
             pass
         elif line == 'END IONS':
-            ions = Ions(metadata, intensities)
+            spectrum = MS2spectra(metadata, masses)
             metadata = {}
-            intensities = []
-            yield ions
+            masses = []
+            yield spectrum
         else:
             parts = line.split('=', 1)
             if len(parts) == 1:
                 parts = line.split(' ')
                 assert len(parts) == 2
-                intensities.append(parts)
+                masses.append(parts)
             elif len(parts) == 2:
                 metadata[parts[0]] = parts[1]
 
@@ -74,8 +74,8 @@ def find_similar_mass(in_filename, out_filename):
     print("Reading {0}... ".format(in_filename))
     records = []
     with open(in_filename) as in_f:
-        for ions in read_ions(in_f):
-            records.append(ions)
+        for spectrum in read_spectrum(in_f):
+            records.append(spectrum)
             print_to_start("{0} records read".format(len(records)))
     records.sort(key=methodcaller('pepmass'))
     found = 0
