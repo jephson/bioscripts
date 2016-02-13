@@ -1,3 +1,7 @@
+#Based on a mascot generic file format tested with otuput
+#from MSConvert, Proteome Discoverer and Progenesis
+#these three programes define the metadata a bit differently
+
 class MS2spectrum:
     def __init__(self, metadata, masses):
         self.metadata = metadata
@@ -24,7 +28,7 @@ class MS2spectrum:
         sign = chg[-1:]
         assert sign == '+' or sign == '-'
         chg = chg[:-1]
-        return int(sign + chg) 
+        return int(sign + chg)
 
 
 # Generator that takes a file and generates instances of MS2spectrum
