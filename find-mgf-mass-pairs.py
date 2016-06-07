@@ -18,7 +18,7 @@ def print_to_start(string):
 # The function that solves our actual problem.
 # Read all the records from input, sort by PEPMASS, then for each element
 # look for one with an exactly different mass 
-def find_similar_mass(in_filename, out_filename):
+def find_similar_mass(in_filename, out_filename_base):
     print("Reading {0}... ".format(in_filename))
     records = []
     with open(in_filename) as in_f:
@@ -28,7 +28,9 @@ def find_similar_mass(in_filename, out_filename):
     print('')
     records.sort(key=methodcaller('pepmass'))
     found = 0
-    with open(out_filename, 'w') as out_f:
+    with open(out_filename_base + '_light.mgf', 'w') as out_light_f, \
+         open(out_filename_base + '_heavy.mgf', 'w') as out_heavy_f, \
+         open(out_filename_base + '_summary.txt', 'w') as out_summary_f:
         for i in range(0, len(records) - 1):
             left = records[i]
             right_target_mass = left.pepmass() + MASS_DIFFERENCE / left.charge()
@@ -36,8 +38,14 @@ def find_similar_mass(in_filename, out_filename):
             filtered = [right for right in right_candidates if charge_time_match(left, right)]
             for right in filtered:
                 found += 1
-                left.write(out_f)
-                right.write(out_f)
+                left.write(out_light_f)
+                right.write(out_heavy_f)
+                out_summary_f.write("{0}\t{1}\t{2}\t{3}\n".format(
+                    left.title(),
+                    right.title(),
+                    left.pepmass(),
+                    right.pepmass()
+                ))
             print_to_start("{0} spectra compared, {1} pairs written".format(i + 1, found))
         print('')
 
@@ -70,4 +78,4 @@ if __name__ == '__main__':
     if len(sys.argv) == 3:
         find_similar_mass(sys.argv[1], sys.argv[2])
     else:
-        print("Usage: {0} input-file output-file".format(sys.argv[0]))
+        print("Usage: {0} input-file output-file-base".format(sys.argv[0]))

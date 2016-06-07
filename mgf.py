@@ -26,6 +26,8 @@ class MS2spectrum:
         chg = chg[:-1]
         return int(sign + chg) 
 
+    def title(self):
+        return self.metadata['TITLE']
 
 # Generator that takes a file and generates instances of MS2spectrum
 def read_spectra(in_f):
