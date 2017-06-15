@@ -1,14 +1,14 @@
 class MS2spectrum:
-    def __init__(self, metadata, masses):
+    def __init__(self, metadata, fragments):
         self.metadata = metadata
-        self.masses = masses
+        self.fragments = fragments
 
     def write(self, f):
         f.write('BEGIN IONS\n')
         for key in self.metadata:
             f.write('{0}={1}\n'.format(key, self.metadata[key]))
-        for mass, intensity in self.masses:
-            f.write("{0} {1}\n".format(mass, intensity))
+        for fragment in self.fragments:
+            f.write(fragment.format())
         f.write('END IONS\n')
 
     def pepmass(self):
@@ -29,25 +29,33 @@ class MS2spectrum:
     def title(self):
         return self.metadata['TITLE']
 
+class MS2fragment:
+    def __init__(self, mass, intensity):
+        self.mass = mass
+        self.intensity = intensity
+
+    def format(self):
+        return "{0} {1}\n".format(self.mass, self.intensity)
+
 # Generator that takes a file and generates instances of MS2spectrum
 def read_spectra(in_f):
-    masses = []
+    fragments = []
     metadata = {}
     for line in in_f:
         line = line.strip()
         if line == '' or line == 'BEGIN IONS':
             pass
         elif line == 'END IONS':
-            spectrum = MS2spectrum(metadata, masses)
+            spectrum = MS2spectrum(metadata, fragments)
             metadata = {}
-            masses = []
+            fragments = []
             yield spectrum
         else:
             parts = line.split('=', 1)
             if len(parts) == 1:
                 parts = line.split(' ')
                 assert len(parts) == 2
-                masses.append(parts)
+                fragments.append(MS2fragment(float(parts[0]), float(parts[1])))
             elif len(parts) == 2:
                 metadata[parts[0]] = parts[1]
 

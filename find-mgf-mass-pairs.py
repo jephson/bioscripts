@@ -4,9 +4,14 @@
 MASS_DIFFERENCE = 12.07573
 EPSILON = 0.001
 MAX_TIME_DIFFERENCE = 30
+FILTERING_MASS_RANGE_START = 50
+FILTERING_MASS_RANGE_INCREMENT = 100
+FILTERING_FRAGMENTS_PER_RANGE = 4
 
 import sys
-from operator import methodcaller
+import copy
+import math
+from operator import methodcaller, attrgetter
 from mgf import MS2spectrum, read_spectra
 
 # Magic function to erase the previous line we printed and overwrite
@@ -23,7 +28,7 @@ def find_similar_mass(in_filename, out_filename_base):
     records = []
     with open(in_filename) as in_f:
         for spectrum in read_spectra(in_f):
-            records.append(spectrum)
+            records.append(filter_weak_fragments(spectrum))
             print_to_start("{0} records read".format(len(records)))
     print('')
     records.sort(key=methodcaller('pepmass'))
@@ -35,7 +40,7 @@ def find_similar_mass(in_filename, out_filename_base):
             left = records[i]
             right_target_mass = left.pepmass() + MASS_DIFFERENCE / left.charge()
             right_candidates = find_range_by_pepmass(right_target_mass, records[i + 1:])
-            filtered = [right for right in right_candidates if charge_time_match(left, right)]
+            filtered = [right for right in right_candidates if good_match(left, right)]
             for right in filtered:
                 found += 1
                 left.write(out_light_f)
@@ -48,6 +53,28 @@ def find_similar_mass(in_filename, out_filename_base):
                 ))
             print_to_start("{0} spectra compared, {1} pairs written".format(i + 1, found))
         print('')
+
+def filter_weak_fragments(spectrum):
+    filtered = []
+    i = 0
+    fragments = spectrum.fragments
+    for ceil in range(FILTERING_MASS_RANGE_START,
+                      int(math.ceil(fragments[-1].mass)),
+                      FILTERING_MASS_RANGE_INCREMENT):
+        segment = []
+        while fragments[i].mass < ceil and i < len(fragments):
+            segment.append(fragments[i])
+            i += 1
+        segment.sort(key=attrgetter('intensity'), reverse=True)
+        segment = segment[:FILTERING_FRAGMENTS_PER_RANGE]
+        segment.sort(key=attrgetter('mass'))
+        filtered.extend(segment)
+    result = copy.copy(spectrum)
+    result.fragments = filtered
+    return result
+
+def good_match(left, right):
+    return charge_time_match(left, right)
 
 def charge_time_match(left, right):
     return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
