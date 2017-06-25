@@ -1,12 +1,26 @@
 #!/usr/bin/env python
 
 # TODO pass these on the command line?
+
+# Difference in mass we are looking for
 MASS_DIFFERENCE = 12.07573
+
+# Masses are considered equivalent if within this
 EPSILON = 0.001
+
+# Records match if RTINSECONDS differ by no more than this
 MAX_TIME_DIFFERENCE = 30
+
+# Next 3 mean "find 4 highest intensity fragments in mass range 50-150, then 4 in 150-250, etc"
 FILTERING_MASS_RANGE_START = 50
 FILTERING_MASS_RANGE_INCREMENT = 100
 FILTERING_FRAGMENTS_PER_RANGE = 4
+
+# Need at least this many fragments with MASS_DIFFERENCE / charge matching for a record to match
+SHIFTED_FRAGMENTS_NEEDED = 4
+
+# Need at least this many fragments with identical mass or the condition above for a record to match
+SHIFTED_OR_UNSHIFTED_FRAGMENTS_NEEDED = 10
 
 import sys
 import copy
@@ -74,32 +88,54 @@ def filter_weak_fragments(spectrum):
     return result
 
 def good_match(left, right):
-    return charge_time_match(left, right)
+    return charge_time_match(left, right) and fragment_diff_match(left, right)
 
 def charge_time_match(left, right):
     return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
         and left.charge() == right.charge()
 
+def fragment_diff_match(left, right):
+    right_masses = right.fragment_masses()
+    shifted_fragments = 0
+    unshifted_fragments = 0
+    for l in left.fragment_masses():
+        matches = binary_search_range(
+            right_masses, lambda r: r < l - EPSILON, lambda r: r < l + EPSILON)
+        if len(matches) > 0:
+            unshifted_fragments += 1
+        for c in range(1, left.charge()):
+            target = l + MASS_DIFFERENCE / c
+            matches = binary_search_range(
+                right_masses, lambda r: r < target - EPSILON, lambda r: r < target + EPSILON)
+            if len(matches) > 0:
+                shifted_fragments += 1
+    return shifted_fragments + unshifted_fragments > SHIFTED_OR_UNSHIFTED_FRAGMENTS_NEEDED and \
+        shifted_fragments > SHIFTED_FRAGMENTS_NEEDED
+
 # Binary search a sorted list of records to find ones with a similar PEPMASS
 def find_range_by_pepmass(target_mass_centre, records):
-    def mass(i):
-        return records[i].pepmass()
+    def lower_pepmass(diff):
+        return lambda record: record.pepmass() < target_mass_centre + diff
+    return binary_search_range(records, lower_pepmass(-EPSILON), lower_pepmass(EPSILON))
 
-    def recurse(left, right, target_mass):
+def binary_search_range(records, left_pred, right_pred):
+    left  = binary_search(records, left_pred)
+    right = binary_search(records, right_pred)
+    return records[left:right]
+
+def binary_search(records, predicate):
+    def recurse(left, right):
         assert left <= right
         if left == right:
             return left
-        if left + 1 == right and mass(left) < target_mass:
+        if left + 1 == right and predicate(records[left]):
             return right
         mid = (left + right) // 2
-        if mass(mid) < target_mass:
-            return recurse(mid, right, target_mass)
-        else: # mass(mid) > target_mass
-            return recurse(left, mid, target_mass)
-
-    left  = recurse(0, len(records) - 1, target_mass_centre - EPSILON)
-    right = recurse(0, len(records) - 1, target_mass_centre + EPSILON)
-    return records[left:right]
+        if predicate(records[mid]):
+            return recurse(mid, right)
+        else:
+            return recurse(left, mid)
+    return recurse(0, len(records) - 1)
 
 if __name__ == '__main__':
     if len(sys.argv) == 3:

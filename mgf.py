@@ -8,7 +8,7 @@ class MS2spectrum:
         for key in self.metadata:
             f.write('{0}={1}\n'.format(key, self.metadata[key]))
         for fragment in self.fragments:
-            f.write(fragment.format())
+            f.write(str(fragment))
         f.write('END IONS\n')
 
     def pepmass(self):
@@ -29,13 +29,19 @@ class MS2spectrum:
     def title(self):
         return self.metadata['TITLE']
 
+    def fragment_masses(self):
+        return [f.mass for f in self.fragments]
+
 class MS2fragment:
     def __init__(self, mass, intensity):
         self.mass = mass
         self.intensity = intensity
 
-    def format(self):
+    def __repr__(self):
         return "{0} {1}\n".format(self.mass, self.intensity)
+
+    def __str__(self):
+        return repr(self)
 
 # Generator that takes a file and generates instances of MS2spectrum
 def read_spectra(in_f):
