@@ -28,6 +28,12 @@ import math
 from operator import methodcaller, attrgetter
 from mgf import MS2spectrum, read_spectra
 
+# Magic function to erase the previous line we printed and overwrite
+# it, for a nicer progress display
+def print_to_start(string):
+    sys.stdout.write('\r\033[K' + string)
+    sys.stdout.flush()
+
 # The function that solves our actual problem.
 # Read all the records from input, sort by PEPMASS, then for each element
 # look for one with an exactly different mass 
@@ -37,16 +43,20 @@ def find_similar_mass(in_filename, out_filename_base):
     with open(in_filename) as in_f:
         for spectrum in read_spectra(in_f):
             records.append(filter_weak_fragments(spectrum))
+            print_to_start("{0} records read".format(len(records)))
+    print('')
     records.sort(key=methodcaller('pepmass'))
     found = 0
     with open(out_filename_base + '_light.mgf', 'w') as out_light_f, \
          open(out_filename_base + '_heavy.mgf', 'w') as out_heavy_f, \
+         open(out_filename_base + '_matched_fragments.txt', 'w') as out_matched_f, \
          open(out_filename_base + '_summary.txt', 'w') as out_summary_f:
         for i in range(0, len(records) - 1):
             left = records[i]
             right_target_mass = left.pepmass() + MASS_DIFFERENCE / left.charge()
             right_candidates = find_range_by_pepmass(right_target_mass, records[i + 1:])
-            filtered = [right for right in right_candidates if good_match(left, right)]
+            filtered = [right for right in right_candidates
+                        if good_match(left, right, out_matched_f)]
             for right in filtered:
                 found += 1
                 left.write(out_light_f)
@@ -57,7 +67,8 @@ def find_similar_mass(in_filename, out_filename_base):
                     left.pepmass(),
                     right.pepmass()
                 ))
-        print("\n\n{0} pairs found".format(found))
+            print_to_start("{0} spectra compared, {1} pairs written".format(i + 1, found))
+        print('')
 
 def filter_weak_fragments(spectrum):
     filtered = []
@@ -78,15 +89,15 @@ def filter_weak_fragments(spectrum):
     result.fragments = filtered
     return result
 
-def good_match(left, right):
-    return charge_time_match(left, right) and fragment_diff_match(left, right)
+def good_match(left, right, out_f):
+    return charge_time_match(left, right) and fragment_diff_match(left, right, out_f)
 
 def charge_time_match(left, right):
     return abs(left.rtinseconds() - right.rtinseconds()) < MAX_TIME_DIFFERENCE \
         and left.charge() == right.charge()
 
-def fragment_diff_match(left, right):
-    print("\nComparing: {} with {}".format(left.title(), right.title()))
+def fragment_diff_match(left, right, out_f):
+    out_f.write("\nCompared: {} with {}\n".format(left.title(), right.title()))
     right_masses = right.fragment_masses()
     shifted_fragments = 0
     unshifted_fragments = 0
@@ -94,14 +105,14 @@ def fragment_diff_match(left, right):
         matches = binary_search_range(
             right_masses, lambda r: r < l - EPSILON, lambda r: r < l + EPSILON)
         if len(matches) > 0:
-            print("Unshifted match: {}".format(matches[0]))
+            out_f.write("Unshifted match: {}\n".format(matches[0]))
             unshifted_fragments += 1
         for c in range(1, left.charge()):
             target = l + MASS_DIFFERENCE / c
             matches = binary_search_range(
                 right_masses, lambda r: r < target - EPSILON, lambda r: r < target + EPSILON)
             if len(matches) > 0:
-                print("Shifted match: {} {} {}".format(matches[0], l, MASS_DIFFERENCE / c))
+                out_f.write("Shifted match: {} {} {}\n".format(matches[0], l, MASS_DIFFERENCE / c))
                 shifted_fragments += 1
     return shifted_fragments + unshifted_fragments > SHIFTED_OR_UNSHIFTED_FRAGMENTS_NEEDED and \
         shifted_fragments > SHIFTED_FRAGMENTS_NEEDED
